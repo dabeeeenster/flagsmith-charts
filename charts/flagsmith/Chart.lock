@@ -2,5 +2,11 @@ dependencies:
 - name: postgresql
   repository: https://charts.helm.sh/stable
   version: 8.6.4
-digest: sha256:020069ea9d5e1b480bf3d8e0206a676a16406d21d549048fab0b14171c4a8821
-generated: "2021-04-19T17:08:09.490331074+01:00"
+- name: influxdb2
+  repository: https://helm.influxdata.com/
+  version: 2.1.1
+- name: graphite
+  repository: https://kiwigrid.github.io
+  version: 0.7.3
+digest: sha256:1da2ab7c98cb0226469fd785d5d98431148486c6cecde9e419c73c2c0dc325b8
+generated: "2023-04-18T16:20:35.478691+01:00"

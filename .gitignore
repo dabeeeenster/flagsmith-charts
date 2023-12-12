@@ -4,3 +4,5 @@ venv/
 .envrc
 .vscode
 charts/*/charts
+.direnv
+.idea/

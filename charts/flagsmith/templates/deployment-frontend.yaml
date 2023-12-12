@@ -1,3 +1,4 @@
+{{- if and .Values.api.separateApiAndFrontend .Values.frontend.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,7 +11,10 @@ spec:
     matchLabels:
       {{- include "flagsmith.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
-  replicas: {{ .Values.frontend.replicacount }}
+  {{- with .Values.frontend.deploymentStrategy }}
+  strategy: {{- . | toYaml | nindent 4 }}
+  {{- end }}
+  {{- include "flagsmith.replicaCount" .Values.frontend.replicacount | nindent 2 }}
   template:
     metadata:
       {{- if .Values.frontend.podAnnotations }}
@@ -26,22 +30,22 @@ spec:
     spec:
       {{- if .Values.frontend.affinity }}
       affinity:
-{{ toYaml .Values.frontend.affinity | indent 4 }}
+{{ toYaml .Values.frontend.affinity | indent 8 }}
       {{- end }}
       {{- if .Values.frontend.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.frontend.nodeSelector | indent 4 }}
+{{ toYaml .Values.frontend.nodeSelector | indent 8 }}
       {{- end }}
       {{- if .Values.frontend.tolerations }}
       tolerations:
-{{ toYaml .Values.frontend.tolerations | indent 4 }}
+{{ toYaml .Values.frontend.tolerations | indent 8 }}
       {{- end }}
       {{- if .Values.frontend.schedulerName }}
       schedulerName: "{{ .Values.frontend.schedulerName }}"
       {{- end }}
       {{- if .Values.frontend.image.imagePullSecrets }}
       imagePullSecrets:
-{{ toYaml .Values.frontend.image.imagePullSecrets | indent 4 }}
+{{ toYaml .Values.frontend.image.imagePullSecrets | indent 8 }}
       {{- end }}
       securityContext:
         {{- $securityContext := .Values.frontend.podSecurityContext | default (dict) | deepCopy }}
@@ -49,23 +53,17 @@ spec:
         {{- $securityContext = $securityContext | merge (omit .Values.frontend.defaultPodSecurityContext "enabled") }}
         {{- end }}
         {{- toYaml $securityContext | nindent 8 }}
+{{- with .Values.frontend.extraInitContainers }}
+      initContainers:
+{{- toYaml . | nindent 6 }}
+{{- end }}
       containers:
       - name: {{ .Chart.Name }}-frontend
-        image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default (printf "v%s" .Chart.AppVersion) }}
+        image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default (printf "%s" .Chart.AppVersion) }}
         imagePullPolicy: {{ .Values.frontend.image.imagePullPolicy }}
         ports:
         - containerPort: {{ .Values.service.frontend.port }}
-        env:
-        - name: ASSET_URL
-          value: '/'
-{{- if .Values.frontend.apiProxy.enabled }}
-        - name: PROXY_API_URL
-          value: http://{{ include "flagsmith.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.api.port }}
-{{- end }}
-{{- range $envName, $envValue := .Values.frontend.extraEnv }}
-        - name: {{ $envName }}
-          value: {{ $envValue | quote }}
-{{- end }}
+        env: {{- include "flagsmith.frontend.environment" . | nindent 8 }}
         livenessProbe:
           failureThreshold: {{ .Values.frontend.livenessProbe.failureThreshold }}
           httpGet:
@@ -88,3 +86,7 @@ spec:
           timeoutSeconds: {{ .Values.frontend.readinessProbe.timeoutSeconds }}
         resources:
 {{ toYaml .Values.frontend.resources | indent 10 }}
+{{- with .Values.frontend.extraContainers }}
+{{- toYaml . | nindent 6 }}
+{{- end }}
+{{- end }}

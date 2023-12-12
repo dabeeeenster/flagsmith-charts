@@ -1,7 +1,7 @@
-{{- if .Values.ingress.frontend.enabled -}}
+{{- if and .Values.frontend.enabled .Values.ingress.frontend.enabled -}}
 {{- $fullName := include "flagsmith.fullname" . -}}
 {{- $svcPort := .Values.service.frontend.port -}}
-{{- if semverCompare ">=1.18.0" .Capabilities.KubeVersion.GitVersion -}}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else -}}
 {{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -21,6 +21,9 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+{{- with .Values.ingress.frontend.ingressClassName }}
+  ingressClassName: {{ . }}
+{{- end }}
   {{- if .Values.ingress.frontend.tls }}
   tls:
     {{- range .Values.ingress.frontend.tls }}
@@ -33,12 +36,11 @@ spec:
   {{- end }}
   rules:
     {{- range .Values.ingress.frontend.hosts }}
-    - host: {{ .host | quote }}
+    - host: {{ . | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ . }}
-            {{- if semverCompare ">=1.18.0" $.Capabilities.KubeVersion.GitVersion }}
+          - path: /
+            {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
             pathType: Prefix
             backend:
               service:
@@ -50,6 +52,5 @@ spec:
               serviceName: {{ $fullName }}-frontend
               servicePort: {{ $svcPort }}
             {{- end }}
-          {{- end }}
     {{- end }}
-  {{- end }}
+{{- end }}
